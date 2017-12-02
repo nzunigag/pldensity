@@ -212,3 +212,57 @@ List dp_normal_mix(
   out.attr("class") = "PL";
   return out;
 }
+
+// 
+// //' @title Eval Point Density
+// //' @description Bla Bla
+// //' @export
+// // [[Rcpp::export]]
+// List dp_normal_mix_eval_density(
+//     const arma::mat& xnex,
+//     const List dp_normal_mix_model
+// ) {
+//   // Check list is of appropriate type
+//   if (!Rf_inherits(dp_normal_mix_model, "PL")) throw "List must be a PL object";
+//   
+//   // Total observations
+//   const int T = x.n_rows;
+//   
+//   // Save prior in structure
+//   const DPNormalPrior prior(alpha, lambda, kappa, nu, Omega);
+//   
+//   // Initialize N particles
+//   std::vector<Particle> particle(N);
+//   for (int i = 0; i < N; i++) {
+//     vec randstart = {unif_rand(), unif_rand()};
+//     particle[i] = Particle(randstart);
+//   }
+//   
+//   // Update every particle
+//   for (int t = 1; t < T; t++) {
+//     // Resample 
+//     vec weight(N);
+//     for (int i = 0; i < N; i++) {
+//       weight[i] = sum(predictive(x.row(t).t(), particle[i], prior));
+//     }
+//     uvec new_idx = resample(N, weight);
+//     
+//     // Propagate
+//     std::vector<Particle> temp_particle(particle);
+//     for (int i = 0; i < N; i++) {
+//       particle[i] = propagate(x.row(t).t(), temp_particle[new_idx[i]], prior);
+//     }
+//   }
+//   
+//   List out;
+//   for (int i = 0; i < N; i++) {
+//     List particlei = List::create(
+//       Named("m") = particle[i].m,
+//       Named("n") = particle[i].n,
+//       Named("mu") = particle[i].mu,
+//       Named("S") = particle[i].S);
+//     out.push_back(particlei);
+//   }
+//   out.attr("class") = "PL";
+//   return out;
+// }
