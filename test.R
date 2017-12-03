@@ -1,7 +1,7 @@
 # test data (True gaussian mixture)
-library(mvtnorm)
 library(pldensity)
 library(plotly)
+library(mvtnorm)
 
 # set.seed(110104)
 nclust <- 4
@@ -33,30 +33,40 @@ system.time({
 })
 
 resol <- 50
-mesh <- expand.grid(x = seq(0, 1, length.out = resol), y = seq(0, 1, length.out = resol))
-mesh$z <- dp_normal_deval(data.matrix(mesh), res2, nparticles = 50)
-z <- matrix(mesh$z, resol, resol)
+xseq <- seq(0, 1, length.out = resol)
+yseq <- seq(0, 1, length.out = resol)
+mesh <- expand.grid(xseq, yseq)
+z <- dp_normal_deval(res2, data.matrix(mesh), nparticles = 50)
+zcond <- dp_normal_deval_conditional(res2, matrix(xseq, ncol = 1), 1, 2, matrix(0.5, 1, 1), 5)
+plot(xseq, zcond, type = "l", main = "Prox(lon | lat = 0.5)")
+integrate(function(x) dp_normal_deval_conditional(res2, matrix(x, ncol = 1), 1, 2, matrix(0.5, 1, 1), 5), 0, 1)
+
+z <- matrix(z, resol, resol)
 contour(z, add = TRUE, nlevels = 40)
 plot_ly(z = ~t(z)) %>% add_heatmap()
 
 res3 <- marginal(res2, 1)
 mesh <- data.frame(x = seq(0, 1, length.out = resol))
-mesh$z <- dp_normal_deval(data.matrix(mesh), res3, nparticles = 30)
-plot(mesh$x, mesh$z, type = "l")
+z <- dp_normal_deval(res3, data.matrix(mesh), nparticles = 30)
+plot(mesh$x, z, type = "l")
 integrate(function(x) sapply(x, function(s) dp_normal_deval(matrix(s, 1, 1), res3, nparticles = 30)), -5, 5)
 
 # 0. Libraries ===================================
 library(tidyverse)
-library(lubridate)
+# library(lubridate)
 library(leaflet)
 library(sp)
-library(leaflet.extras)
-library(KernSmooth)
+library(pldensity)
 
 # 1. Read Data =====================================
 rides <- read_csv("D:/Datasets/Rides_A.csv")
 rides <- rides %>%
-  mutate(datehour = ymd_h(paste(paste(year(started_on), month(started_on), day(started_on), sep = "-"), hour(started_on))))
+  mutate(datehour = lubridate::ymd_h(
+    paste(paste(
+      lubridate::year(started_on), 
+      lubridate::month(started_on), 
+      lubridate::day(started_on), sep = "-"), 
+      lubridate::hour(started_on))))
 
 rides_count <- rides %>%
   group_by(datehour) %>%
@@ -67,7 +77,7 @@ abline(h = mean(rides_count$n), col = "red")
 
 
 example <- rides %>%
-  filter(datehour == ymd_h("2017-04-07 24"))
+  filter(datehour == lubridate::ymd_h("2017-04-07 18"))
 
 x <- example %>%
   select(start_location_lat, start_location_long) %>%
@@ -95,7 +105,7 @@ system.time({
     Omega =  0.01 ^ 2 * diag(2))
 })
 
-z <- dp_normal_deval(x, res2, nparticles = 100)
+z <-  dp_normal_deval(res2, x, nparticles = 100)
 
 xsp <- SpatialPointsDataFrame(
   coords = x[ ,2:1], 

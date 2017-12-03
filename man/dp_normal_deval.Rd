@@ -4,7 +4,7 @@
 \alias{dp_normal_deval}
 \title{Eval Point Density}
 \usage{
-dp_normal_deval(xnew, dp_normal_mix_model, nparticles = 50L)
+dp_normal_deval(model, xnew, nparticles = 50L)
 }
 \description{
 Bla Bla

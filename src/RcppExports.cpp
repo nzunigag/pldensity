@@ -6,20 +6,6 @@
 
 using namespace Rcpp;
 
-// dst
-inline double dst(const arma::vec& x, const arma::vec& mu, const arma::mat& Sigma, const double df);
-RcppExport SEXP _pldensity_dst(SEXP xSEXP, SEXP muSEXP, SEXP SigmaSEXP, SEXP dfSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec& >::type x(xSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type mu(muSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type Sigma(SigmaSEXP);
-    Rcpp::traits::input_parameter< const double >::type df(dfSEXP);
-    rcpp_result_gen = Rcpp::wrap(dst(x, mu, Sigma, df));
-    return rcpp_result_gen;
-END_RCPP
-}
 // dp_normal_mix
 Rcpp::List dp_normal_mix(const arma::mat& x, const int N, const double alpha, const arma::vec& lambda, const double kappa, const double nu, const arma::mat& Omega);
 RcppExport SEXP _pldensity_dp_normal_mix(SEXP xSEXP, SEXP NSEXP, SEXP alphaSEXP, SEXP lambdaSEXP, SEXP kappaSEXP, SEXP nuSEXP, SEXP OmegaSEXP) {
@@ -38,36 +24,52 @@ BEGIN_RCPP
 END_RCPP
 }
 // dp_normal_deval
-arma::vec dp_normal_deval(const arma::mat& xnew, const Rcpp::List& dp_normal_mix_model, const int nparticles);
-RcppExport SEXP _pldensity_dp_normal_deval(SEXP xnewSEXP, SEXP dp_normal_mix_modelSEXP, SEXP nparticlesSEXP) {
+arma::vec dp_normal_deval(const Rcpp::List& model, const arma::mat& xnew, const int nparticles);
+RcppExport SEXP _pldensity_dp_normal_deval(SEXP modelSEXP, SEXP xnewSEXP, SEXP nparticlesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type model(modelSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type xnew(xnewSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type dp_normal_mix_model(dp_normal_mix_modelSEXP);
     Rcpp::traits::input_parameter< const int >::type nparticles(nparticlesSEXP);
-    rcpp_result_gen = Rcpp::wrap(dp_normal_deval(xnew, dp_normal_mix_model, nparticles));
+    rcpp_result_gen = Rcpp::wrap(dp_normal_deval(model, xnew, nparticles));
     return rcpp_result_gen;
 END_RCPP
 }
-// marginal
-Rcpp::List marginal(const Rcpp::List& dp_normal_mix_model, const arma::uvec dims);
-RcppExport SEXP _pldensity_marginal(SEXP dp_normal_mix_modelSEXP, SEXP dimsSEXP) {
+// dp_normal_marginal
+Rcpp::List dp_normal_marginal(const Rcpp::List& model, const arma::uvec& dims);
+RcppExport SEXP _pldensity_dp_normal_marginal(SEXP modelSEXP, SEXP dimsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type dp_normal_mix_model(dp_normal_mix_modelSEXP);
-    Rcpp::traits::input_parameter< const arma::uvec >::type dims(dimsSEXP);
-    rcpp_result_gen = Rcpp::wrap(marginal(dp_normal_mix_model, dims));
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type model(modelSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type dims(dimsSEXP);
+    rcpp_result_gen = Rcpp::wrap(dp_normal_marginal(model, dims));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dp_normal_deval_conditional
+arma::mat dp_normal_deval_conditional(const Rcpp::List& model, const arma::mat& xnew, const arma::uvec& eval_dims, const arma::uvec& condition_dims, const arma::mat& condition_values, const int nparticles);
+RcppExport SEXP _pldensity_dp_normal_deval_conditional(SEXP modelSEXP, SEXP xnewSEXP, SEXP eval_dimsSEXP, SEXP condition_dimsSEXP, SEXP condition_valuesSEXP, SEXP nparticlesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type model(modelSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type xnew(xnewSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type eval_dims(eval_dimsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type condition_dims(condition_dimsSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type condition_values(condition_valuesSEXP);
+    Rcpp::traits::input_parameter< const int >::type nparticles(nparticlesSEXP);
+    rcpp_result_gen = Rcpp::wrap(dp_normal_deval_conditional(model, xnew, eval_dims, condition_dims, condition_values, nparticles));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_pldensity_dst", (DL_FUNC) &_pldensity_dst, 4},
     {"_pldensity_dp_normal_mix", (DL_FUNC) &_pldensity_dp_normal_mix, 7},
     {"_pldensity_dp_normal_deval", (DL_FUNC) &_pldensity_dp_normal_deval, 3},
-    {"_pldensity_marginal", (DL_FUNC) &_pldensity_marginal, 2},
+    {"_pldensity_dp_normal_marginal", (DL_FUNC) &_pldensity_dp_normal_marginal, 2},
+    {"_pldensity_dp_normal_deval_conditional", (DL_FUNC) &_pldensity_dp_normal_deval_conditional, 6},
     {NULL, NULL, 0}
 };
 

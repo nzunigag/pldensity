@@ -25,9 +25,6 @@ using namespace std;
 // }
 
 // This inline function evaluates the density of t distribution
-//' @title Multivariate t
-//' @export
-// [[Rcpp::export]]
 inline double dst(
     const arma::vec& x,
     const arma::vec& mu,
@@ -82,7 +79,6 @@ struct Particle {
     S = z.S;
   }; 
   Particle () {};
-  
 };
 
 // Defines the prior, to avoid passing along all the parameters
@@ -128,9 +124,9 @@ inline arma::vec predictive(
   const mat& B0 = 2.0 * (p.kappa + 1.0) / p.kappa / c0 * p.Omega;
   dpred[z.m] = p.alpha * dst(x, a0, B0, c0);
   
-  dpred /= p.alpha + sum(z.n);
   return dpred;
 }
+
 
 // Evaluates the density of a new point given a particle
 inline Particle propagate(
@@ -161,7 +157,6 @@ inline Particle propagate(
   
   return out;
 }
-
 
 //' @title Dirichlet Process Normal Mixture Kernel Density Estimation
 //' @description Bla Bla
@@ -213,7 +208,6 @@ Rcpp::List dp_normal_mix(
   
   // Wrap all the output in lists for R
   Rcpp::List param = Rcpp::List::create(
-    Named("N") = wrap(N),
     Named("alpha") = alpha,
     Named("lambda") = wrap(lambda),
     Named("kappa") = wrap(kappa),
@@ -232,6 +226,7 @@ Rcpp::List dp_normal_mix(
   }
   
   Rcpp::List out = Rcpp::List::create(
+    Named("N") = N,
     Named("param") = param,
     Named("particle_list") = particle_list
   );
@@ -245,29 +240,28 @@ Rcpp::List dp_normal_mix(
 //' @export
 // [[Rcpp::export]]
 arma::vec dp_normal_deval(
+    const Rcpp::List& model,
     const arma::mat& xnew,
-    const Rcpp::List& dp_normal_mix_model,
     const int nparticles = 50
   ) {
   // Check list is of appropriate type
-  if (!Rf_inherits(dp_normal_mix_model, "PL")) throw "List must be a PL object";
+  if (!Rf_inherits(model, "PL")) throw "List must be a PL object";
 
   // Allocate space
   const uword K = xnew.n_rows;
   vec density(K, fill::zeros);
 
   // Prior structure
-  Rcpp::List param = dp_normal_mix_model["param"];
-  const int N = param["N"];
-  const int N0 = min(N, nparticles);
-  double alpha = param["alpha"], kappa = param["kappa"], nu = param["nu"];
+  const int N = model["N"];
+  Rcpp::List param = model["param"];
   vec lambda = param["lambda"];
   mat Omega = param["Omega"];
+  double alpha = param["alpha"], kappa = param["kappa"], nu = param["nu"];
   const DPNormalPrior prior(alpha, lambda, kappa, nu, Omega);
-
-  Rcpp::List particle_list = dp_normal_mix_model["particle_list"];
+  const int N0 = min(N, nparticles);
   
-  // 
+  Rcpp::List particle_list = model["particle_list"];
+  
   for (int i = 0; i < N0; i++) {
     Rcpp::List particle_param = particle_list[i];
     int m = particle_param["m"];
@@ -287,24 +281,23 @@ arma::vec dp_normal_deval(
 //' @description Bla Bla
 //' @export
 // [[Rcpp::export]]
-Rcpp::List marginal(
-    const Rcpp::List& dp_normal_mix_model,
-    const arma::uvec dims
+Rcpp::List dp_normal_marginal(
+    const Rcpp::List& model,
+    const arma::uvec& dims
 ) {
   // Check list is of appropriate type
-  if (!Rf_inherits(dp_normal_mix_model, "PL")) throw "List must be a PL object";
+  if (!Rf_inherits(model, "PL")) throw "List must be a PL object";
   const uvec dims_ = dims - 1;
   
   // Parameters
-  Rcpp::List param_full = dp_normal_mix_model["param"];
-  const int N = param_full["N"];
+  const int N = model["N"];
+  Rcpp::List param_full = model["param"];
   const double alpha = param_full["alpha"], kappa =  param_full["kappa"], nu = param_full["nu"];
   vec lambda = param_full["lambda"];
   vec lambdanew = lambda.elem(dims_);
   mat Omega = param_full["Omega"];
   mat Omeganew = Omega.submat(dims_, dims_);
   Rcpp::List param_reduced = Rcpp::List::create(
-    Named("N") = N,
     Named("alpha") = alpha, 
     Named("lambda") = wrap(lambdanew),
     Named("kappa") = kappa,
@@ -314,7 +307,7 @@ Rcpp::List marginal(
 
   // Copy only selected dimensions
   Rcpp::List particle_list_reduced;
-  Rcpp::List particle_list_full = dp_normal_mix_model["particle_list"];
+  Rcpp::List particle_list_full = model["particle_list"];
   for (int i = 0; i < N; i++) {
     Rcpp::List particle = particle_list_full[i];
     int m = particle["m"];
@@ -334,11 +327,78 @@ Rcpp::List marginal(
     particle_list_reduced.push_back(particlei);
   }
 
-  Rcpp::List dp_normal_mix_model_reduced = Rcpp::List::create(
+  Rcpp::List model_reduced = Rcpp::List::create(
+    Named("N") = N,
     Named("param") = param_reduced,
     Named("particle_list") = particle_list_reduced
   );
 
-  dp_normal_mix_model_reduced.attr("class") = "PL";
-  return dp_normal_mix_model_reduced;
+  model_reduced.attr("class") = "PL";
+  return model_reduced;
+}
+
+
+//' @title Eval Point Conditional density
+//' @description Bla Bla
+//' @export
+// [[Rcpp::export]]
+arma::mat dp_normal_deval_conditional(
+    const Rcpp::List& model,
+    const arma::mat& xnew,
+    const arma::uvec& eval_dims,
+    const arma::uvec& condition_dims,
+    const arma::mat& condition_values,
+    const int nparticles = 50
+) {
+  // Check list is of appropriate type
+  if (!Rf_inherits(model, "PL"))
+    throw "List must be a PL object";
+
+  // Allocate space
+  const uvec edims = eval_dims - 1;
+  const uvec cdims = condition_dims - 1;
+  const int total_dims = edims.n_elem + cdims.n_elem;
+  const uword K = xnew.n_rows, L = condition_values.n_rows;
+  mat density(K, L, fill::zeros);
+
+  // Marginal model
+  Rcpp::List marginal = dp_normal_marginal(model, cdims + 1);
+
+  // Priors
+  Rcpp::List param = model["param"];
+  vec lambda = param["lambda"];
+  vec mlambda = lambda(cdims);
+  mat Omega = param["Omega"];
+  mat mOmega = Omega.submat(cdims, cdims);
+  const DPNormalPrior prior((double) param["alpha"], lambda, (double) param["kappa"], (double) param["nu"], Omega);
+  const DPNormalPrior mprior((double) param["alpha"], mlambda, (double) param["kappa"], (double) param["nu"], mOmega);
+
+  //  Eval conditional densities
+  const int N0 = min((int) model["N"], nparticles);
+  Rcpp::List particle_list = model["particle_list"];
+  Rcpp::List mparticle_list = marginal["particle_list"];
+  for (int i = 0; i < N0; i++) {
+    Rcpp::List particle_param = particle_list[i];
+    Rcpp::List mparticle_param = mparticle_list[i];
+    int m = particle_param["m"];
+    vec n = particle_param["n"];
+    mat mu = particle_param["mu"];
+    mat mmu = mparticle_param["mu"];
+    cube S = particle_param["S"];
+    cube mS = mparticle_param["S"];
+    Particle zfull(m, n, mu, S);
+    Particle zmarginal(m, n, mmu, mS);
+    for (uword l = 0; l < L; l++) {
+      for (uword k = 0; k < K; k++) {
+        vec xfull(total_dims, fill::zeros);
+        xfull(edims) = xnew.row(k).t();
+        xfull(cdims) = condition_values.row(l).t();
+        double djoint = sum(predictive(xfull, zfull, prior));
+        double dmarginal = sum(predictive(condition_values.row(l).t(), zmarginal, mprior));
+        density(k, l) += djoint / dmarginal / N0;
+      }
+    }
+  }
+  
+  return density;
 }
