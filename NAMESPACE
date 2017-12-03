@@ -2,5 +2,7 @@
 
 export(dp_normal_deval)
 export(dp_normal_mix)
+export(dst)
+export(marginal)
 importFrom(Rcpp,evalCpp)
 useDynLib(pldensity)
