@@ -10,3 +10,10 @@ dp_normal_mix <- function(x, N, alpha, lambda, kappa, nu, Omega) {
     .Call('_pldensity_dp_normal_mix', PACKAGE = 'pldensity', x, N, alpha, lambda, kappa, nu, Omega)
 }
 
+#' @title Eval Point Density
+#' @description Bla Bla
+#' @export
+dp_normal_deval <- function(xnew, dp_normal_mix_model) {
+    .Call('_pldensity_dp_normal_deval', PACKAGE = 'pldensity', xnew, dp_normal_mix_model)
+}
+

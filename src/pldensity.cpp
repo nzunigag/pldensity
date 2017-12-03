@@ -77,6 +77,8 @@ struct Particle {
     S = z.S;
   }; 
   Particle () {};
+  Particle (int m_, arma::vec& n_, arma::mat& mu_, arma::cube& S_) 
+    : m(m_), n(n_), mu(mu_), S(S_) {};
 };
 
 // Defines the prior, to avoid passing along all the parameters
@@ -162,7 +164,7 @@ inline Particle propagate(
 //' @param alpha concentration parameter of Dirichlett process
 //' @export
 // [[Rcpp::export]]
-List dp_normal_mix(
+Rcpp::List dp_normal_mix(
     const arma::mat& x,
     const int N,
     const double alpha,
@@ -173,6 +175,7 @@ List dp_normal_mix(
 ) {
   // Total observations
   const int T = x.n_rows;
+  const int d = x.n_cols;
   
   // Save prior in structure
   const DPNormalPrior prior(alpha, lambda, kappa, nu, Omega);
@@ -180,7 +183,10 @@ List dp_normal_mix(
   // Initialize N particles
   std::vector<Particle> particle(N);
   for (int i = 0; i < N; i++) {
-    vec randstart = {unif_rand(), unif_rand()};
+    vec randstart(d);
+    for (int j = 0; j < d; j++) {
+      randstart[j] = unif_rand();
+    }
     particle[i] = Particle(randstart);
   }
   
@@ -200,69 +206,74 @@ List dp_normal_mix(
     }
   }
   
-  List out;
+  // Wrap all the output in lists for R
+  Rcpp::List param = Rcpp::List::create(
+    Named("N") = wrap(N),
+    Named("alpha") = alpha,
+    Named("lambda") = wrap(lambda),
+    Named("kappa") = wrap(kappa),
+    Named("nu") = nu,
+    Named("Omega") = wrap(Omega)
+  );
+  
+  Rcpp::List particle_list;
   for (int i = 0; i < N; i++) {
-    List particlei = List::create(
-      Named("m") = particle[i].m,
-      Named("n") = particle[i].n,
-      Named("mu") = particle[i].mu,
-      Named("S") = particle[i].S);
-    out.push_back(particlei);
+    Rcpp::List particlei = Rcpp::List::create(
+      Named("m") = wrap(particle[i].m),
+      Named("n") = wrap(particle[i].n),
+      Named("mu") = wrap(particle[i].mu),
+      Named("S") = wrap(particle[i].S));
+    particle_list.push_back(particlei);
   }
+  
+  Rcpp::List out = Rcpp::List::create(
+    Named("param") = param,
+    Named("particle_list") = particle_list
+  );
+  
   out.attr("class") = "PL";
   return out;
 }
 
-// 
-// //' @title Eval Point Density
-// //' @description Bla Bla
-// //' @export
-// // [[Rcpp::export]]
-// List dp_normal_mix_eval_density(
-//     const arma::mat& xnex,
-//     const List dp_normal_mix_model
-// ) {
-//   // Check list is of appropriate type
-//   if (!Rf_inherits(dp_normal_mix_model, "PL")) throw "List must be a PL object";
-//   
-//   // Total observations
-//   const int T = x.n_rows;
-//   
-//   // Save prior in structure
-//   const DPNormalPrior prior(alpha, lambda, kappa, nu, Omega);
-//   
-//   // Initialize N particles
-//   std::vector<Particle> particle(N);
-//   for (int i = 0; i < N; i++) {
-//     vec randstart = {unif_rand(), unif_rand()};
-//     particle[i] = Particle(randstart);
-//   }
-//   
-//   // Update every particle
-//   for (int t = 1; t < T; t++) {
-//     // Resample 
-//     vec weight(N);
-//     for (int i = 0; i < N; i++) {
-//       weight[i] = sum(predictive(x.row(t).t(), particle[i], prior));
-//     }
-//     uvec new_idx = resample(N, weight);
-//     
-//     // Propagate
-//     std::vector<Particle> temp_particle(particle);
-//     for (int i = 0; i < N; i++) {
-//       particle[i] = propagate(x.row(t).t(), temp_particle[new_idx[i]], prior);
-//     }
-//   }
-//   
-//   List out;
-//   for (int i = 0; i < N; i++) {
-//     List particlei = List::create(
-//       Named("m") = particle[i].m,
-//       Named("n") = particle[i].n,
-//       Named("mu") = particle[i].mu,
-//       Named("S") = particle[i].S);
-//     out.push_back(particlei);
-//   }
-//   out.attr("class") = "PL";
-//   return out;
-// }
+//' @title Eval Point Density
+//' @description Bla Bla
+//' @export
+// [[Rcpp::export]]
+arma::vec dp_normal_deval(
+    const arma::mat& xnew,
+    Rcpp::List dp_normal_mix_model
+  ) {
+  // Check list is of appropriate type
+  if (!Rf_inherits(dp_normal_mix_model, "PL")) throw "List must be a PL object";
+
+  // Allocate space
+  const uword K = xnew.n_rows;
+  vec density(K, fill::zeros);
+
+  // Prior structure
+  Rcpp::List param = dp_normal_mix_model["param"];
+  const int N = param["N"];
+  double alpha = param["alpha"], kappa = param["kappa"], nu = param["nu"];
+  vec lambda = param["lambda"];
+  mat Omega = param["Omega"];
+  const DPNormalPrior prior(alpha, lambda, kappa, nu, Omega);
+
+  Rcout << "checkpoint 1" << endl;
+
+  Rcpp::List particle_list = dp_normal_mix_model["particle_list"];
+  Rcout << "checkpoint 2" << endl;
+  // 
+  // for (int i = 0; i < N; i++) {
+  //   Rcpp::List particle_param = particle_list[i];
+  //   int m = particle_param["m"];
+  //   vec n = particle_param["n"];
+  //   mat mu = particle_param["mu"];
+  //   cube S = particle_param["S"];
+  //   Particle z(m, n, mu, S);
+  //   for (uword k = 0; k < K; k++) {
+  //     density[k] += sum(predictive(xnew.row(k).t(), z, prior)) / N;
+  //   }  
+  // }
+  
+  return density;
+}

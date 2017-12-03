@@ -7,7 +7,7 @@
 using namespace Rcpp;
 
 // dp_normal_mix
-List dp_normal_mix(const arma::mat& x, const int N, const double alpha, const arma::vec& lambda, const double kappa, const double nu, const arma::mat& Omega);
+Rcpp::List dp_normal_mix(const arma::mat& x, const int N, const double alpha, const arma::vec& lambda, const double kappa, const double nu, const arma::mat& Omega);
 RcppExport SEXP _pldensity_dp_normal_mix(SEXP xSEXP, SEXP NSEXP, SEXP alphaSEXP, SEXP lambdaSEXP, SEXP kappaSEXP, SEXP nuSEXP, SEXP OmegaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -23,9 +23,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dp_normal_deval
+arma::vec dp_normal_deval(const arma::mat& xnew, Rcpp::List dp_normal_mix_model);
+RcppExport SEXP _pldensity_dp_normal_deval(SEXP xnewSEXP, SEXP dp_normal_mix_modelSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type xnew(xnewSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type dp_normal_mix_model(dp_normal_mix_modelSEXP);
+    rcpp_result_gen = Rcpp::wrap(dp_normal_deval(xnew, dp_normal_mix_model));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_pldensity_dp_normal_mix", (DL_FUNC) &_pldensity_dp_normal_mix, 7},
+    {"_pldensity_dp_normal_deval", (DL_FUNC) &_pldensity_dp_normal_deval, 2},
     {NULL, NULL, 0}
 };
 
