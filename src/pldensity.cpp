@@ -39,7 +39,8 @@ inline double dst(
   double sign;
   log_det(ldet, sign, Sigma); // compute and store the logarithm of determinant
   double extterm = log(tgamma(0.5 * (df + d))) - log(tgamma(0.5 * df)) - 0.5 * d * log(df * M_PI) - 0.5 * ldet;
-  return exp(extterm + innerterm);
+  double density = exp(extterm + innerterm);
+  return !isnan(density) ? density : 0.0;
 }
 
 // Samples from a multivariate categorical variable
